@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+
+const PNG = require('pngjs').PNG
+const OptiPng = require('optipng')
+
+const fs = require('fs')
+const path = require('path')
+const { promisify } = require('util')
+const readFile = promisify(fs.readFile)
+
+const argv = require('yargs')
+  .alias('v', 'version')
+  .option('c', {
+    boolean: true,
+    alias: 'color',
+    describe: '像素点颜色更丰富'
+  })
+  .usage('Usage: js2png [options] file [outname]')
+  .example('js2png -c a.js code.png')
+  .help('h')
+  .alias('h', 'help')
+  .epilog('--End--')
+  .argv
+
+const {
+  color,
+  min,
+  _: [param1, param2]
+} = argv
+
+const filename = param1
+const extname  = path.extname(filename)
+const basename = path.basename(filename, extname)
+const outname = param2 ? param2.replace(/\.png$/, '') : basename
+
+void (async () => {
+  let source = await readFile(filename, 'utf8')
+  let temp = []
+
+  // 多色版
+  if (color) {
+    if (source.length % 8) {
+      source = '\x00'.repeat(8 - source.length % 8) + source
+    }
+    for (let i = 0; i < source.length; i += 8) {
+      for (let j = 0; j < 7; j++) {
+        temp.push((source.charCodeAt(i + j) << j + 1 & 255) + (source.charCodeAt(i + j + 1) >> 6 - j))
+      }
+    }
+  } else {
+    temp = source.split('').map(x => x.charCodeAt())
+  }
+  
+  const iw = Math.ceil(Math.sqrt(temp.length / 3))
+  const ih = Math.ceil(temp.length / 3 / iw)
+  const newfile = new PNG({ width: iw, height: ih })
+
+  let count = 0
+  for (let y = 0; y < ih; y++) {
+    for (let x = 0; x < iw; x++) {
+      let idx = (y * iw + x) * 4
+      newfile.data[idx] = temp[count++] || 0
+      newfile.data[idx + 1] = temp[count++] || 0
+      newfile.data[idx + 2] = temp[count++] || 0
+      newfile.data[idx + 3] = 255 // data[count - 3] ? 255 : 0
+    }
+  }
+
+  newfile.pack()
+    .pipe(new OptiPng(['-o7'])) // 无损压缩图片
+    .pipe(fs.createWriteStream(`./${outname}.png`))
+    .on('finish', console.log.bind(console, `done! output: ${outname}.png`))
+})()

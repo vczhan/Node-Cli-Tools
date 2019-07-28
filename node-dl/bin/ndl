@@ -1,0 +1,97 @@
+const fs = require('fs')
+const path = require('path')
+const { URL } = require('url')
+const { promisify } = require('util')
+const request = require('request')
+
+const readFile = promisify(fs.readFile)
+const writeFile = promisify(fs.writeFile)
+
+const argv = require('yargs')
+  .alias('v', 'version')
+  .option('l', {
+    boolean: true,
+    alias: 'local',
+    describe: 'true为读取本地资源数组文件，否则下载单个远程资源文件'
+  })
+  .option('e', {
+    boolean: false,
+    alias: 'exclude',
+    default: '',
+    describe: '排除的路径'
+  })
+  .option('s', {
+    boolean: false,
+    alias: 'source',
+    describe: '网站地址'
+  })
+  .usage('Usage: ndl [-l] url [-e path]')
+  .example('ndl -l list.json -e foo')
+  .help('h')
+  .alias('h', 'help')
+  .epilog('--End--')
+  .argv
+
+const {
+  local,
+  exclude,
+  source,
+  _: [url]
+} = argv
+
+const failedFiles = []
+function downFile(url) {
+  const regex = new RegExp(`^\/${exclude}?\/?`)
+  const { pathname } = new URL(url)
+  const fsPath = pathname.replace(regex, '')
+  const dirname = path.dirname(fsPath)
+
+  return new Promise(resolve => {
+    request({
+      url,
+      followRedirect: false
+    })
+    .on('error', () => {
+      failedFiles.push(url)
+      console.log('✘ ' + url )
+      resolve()
+    })
+    .on('response', function (res) {
+      if (res.statusCode !== 200) {
+        return this.emit('error')
+      }
+
+      if (!fs.existsSync(dirname)) {
+        fs.mkdirSync(dirname, { recursive: true })
+      }
+
+      res.pipe(fs.createWriteStream(fsPath))
+      console.log('✔ ' + url)
+      resolve()
+    })
+  })
+}
+
+void (async () => {
+  try {
+    if (local) {
+      // let fileList = JSON.parse(await readFile(url, 'utf8'))
+      let files = await readFile(url, 'utf8').then(JSON.parse)
+
+      if (source) {
+        files = files.filter(x => x.startsWith(source))
+      }
+
+      await Promise.all(files.map(downFile))
+    } else {
+      await downFile(url)
+    }
+    console.log('Game Over!')
+
+    if (failedFiles.length) {
+      writeFile('ndl-debug.txt', JSON.stringify(failedFiles))
+    }
+  } catch (err) {
+    console.log(err.message)
+  }
+})()

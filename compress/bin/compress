@@ -1,0 +1,76 @@
+#!/usr/bin/env node
+
+const fs = require('fs')
+const path = require('path')
+
+const name = process.argv[2]
+const exec = require('child_process').exec
+const { promisify } = require('util')
+const stat = promisify(fs.stat)
+
+const argv = require('yargs')
+  .alias('v', 'version')
+  .option('i', {
+    boolean: true,
+    alias: 'img',
+    describe: '压缩图片'
+  })
+  .option('c', {
+    boolean: true,
+    alias: 'css',
+    describe: '压缩css文件'
+  })
+  .option('j', {
+    boolean: true,
+    alias: 'js',
+    describe: '压缩js文件'
+  })
+  .option('s', {
+    boolean: true,
+    alias: 'source-map',
+    describe: '生成SourceMap'
+  })
+  .option('a', {
+    boolean: true,
+    alias: 'all',
+    describe: '压缩当前目录所有静态资源'
+  })
+  .option('r', {
+    boolean: true,
+    alias: 'depth',
+    describe: '递归当前目录'
+  })
+  .usage('Usage: compress [options] file1[ ,file2]')
+  .example('compress -j -s a.js b.js')
+  .help('h')
+  .alias('h', 'help')
+  .epilog('--End--')
+  .argv
+
+const MinJs = require('../min-js')
+const MinCss = require('../min-css')
+const MinImg = require('../min-img')
+const MinAll = require('../min-all')
+
+const {
+  img: isImg = false,
+  css: isCss = false,
+  js: isJs = false,
+  all: isAll = false, // todo
+  _: files,
+  ...config // depth, sourcemap
+} = argv
+
+if (files.length === 0) {
+  files.push('.')
+}
+
+if (isJs) {
+  new MinJs(files, config).run()
+} else if (isCss) {
+  new MinCss(files, config).run()
+} else if (isImg) {
+  new MinImg(files, config).run()
+} else {
+  new MinAll(files, config).run()
+}

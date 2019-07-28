@@ -1,0 +1,19 @@
+{
+  "name": "js-to-png",
+  "version": "1.0.0",
+  "description": "Convert JS file to png",
+  "main": "index.js",
+  "bin": {
+    "js2png": "./bin/js2png"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "optipng": "^2.1.0",
+    "pngjs": "^3.4.0"
+  }
+}

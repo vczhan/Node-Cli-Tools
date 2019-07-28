@@ -1,0 +1,15 @@
+{
+  "name": "node-dl",
+  "version": "1.0.0",
+  "description": "download website resources",
+  "main": "index.js",
+  "bin": {
+    "node-dl": "./bin/ndl"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "request": "^2.88.0"
+  }
+}
