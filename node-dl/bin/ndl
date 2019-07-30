@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const fs = require('fs')
 const path = require('path')
 const { URL } = require('url')
@@ -41,7 +43,7 @@ const {
 
 const failedFiles = []
 function downFile(url) {
-  const regex = new RegExp(`^\/${exclude}?\/?`)
+  const regex = new RegExp(`^\/?${exclude}?\/?`)
   const { pathname } = new URL(url)
   const fsPath = pathname.replace(regex, '')
   const dirname = path.dirname(fsPath)

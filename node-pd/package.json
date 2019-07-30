@@ -1,13 +1,12 @@
 {
-  "name": "node-dl",
+  "name": "node-pd",
   "version": "1.0.0",
   "description": "download website resources",
   "main": "index.js",
   "bin": {
-    "node-dl": "./bin/ndl"
+    "node-pd": "./bin/npd"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "dependencies": {}
+  "license": "ISC"
 }

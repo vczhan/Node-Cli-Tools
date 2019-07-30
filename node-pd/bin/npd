@@ -1,0 +1,78 @@
+#!/usr/bin/env node
+
+const fs = require('fs')
+const path = require('path')
+const { URL } = require('url')
+const { promisify } = require('util')
+const request = require('request')
+const puppeteer = require('puppeteer-cn')
+
+const writeFile = promisify(fs.writeFile)
+
+let filename = process.argv[2]
+const { origin, pathname } = new URL(filename)
+const extname = path.extname(pathname)
+
+const failedFiles = []
+function downFile(url, exclude = '') {
+  const regex = new RegExp(`^\/?${exclude}?\/?`)
+  const { pathname } = new URL(url)
+  const fsPath = pathname.replace(regex, '')
+  const dirname = path.dirname(fsPath)
+
+  return new Promise(resolve => {
+    request({
+      url,
+      followRedirect: false
+    })
+    .on('error', () => {
+      failedFiles.push(url)
+      console.log('✘ ' + url )
+      resolve()
+    })
+    .on('response', function (res) {
+      if (res.statusCode !== 200) {
+        return this.emit('error')
+      }
+
+      if (!fs.existsSync(dirname)) {
+        fs.mkdirSync(dirname, { recursive: true })
+      }
+
+      res.pipe(fs.createWriteStream(fsPath))
+      console.log('✔ ' + url)
+      resolve()
+    })
+  })
+}
+
+async function getStaticUrlsFromPage(page) {
+  return await page.evaluate(() => {
+    return performance.getEntriesByType('resource').map(x => x.name)
+  })
+}
+
+void (async () => {
+  const browser = await puppeteer.launch()
+  const page = await browser.newPage()
+  await page.goto(filename)
+
+  let resource = await getStaticUrlsFromPage(page, {waitUntil: 'networkidle'})
+
+  browser.close()
+
+  if (resource.length) {
+    resource = resource.filter(x => x.startsWith(origin))
+  }
+
+  if (extname === '') {
+    filename = filename.replace(/\/$/, '') + '/index.html'
+  }
+
+  await downFile(filename, pathname)
+  await Promise.all(resource.map(x => downFile(x, pathname)))
+
+  if (failedFiles.length) {
+    writeFile('ndl-debug.txt', JSON.stringify(failedFiles))
+  }
+})()
