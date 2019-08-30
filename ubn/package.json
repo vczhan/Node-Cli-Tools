@@ -1,0 +1,15 @@
+{
+  "name": "ubn",
+  "version": "1.0.0",
+  "description": "Revive unavailable songs for Netease Cloud Music",
+  "main": "index.js",
+  "bin": {
+    "ubn": "./ubn"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@nondanee/unblockneteasemusic": "^0.18.1"
+  }
+}

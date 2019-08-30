@@ -1,0 +1,52 @@
+#!/usr/bin/env node
+
+const fs = require('fs')
+const dns = require('dns')
+const exec = require('child_process').exec;
+const { promisify } = require('util')
+const lookup = promisify(dns.lookup)
+const readFile = promisify(fs.readFile)
+const writeFile = promisify(fs.writeFile)
+const appendFile = promisify(fs.appendFile)
+
+const argv = process.argv[2]
+const open = !(argv && /-q|-x|quit|exit/.test(argv))
+const isWin = process.platform === 'win32'
+const HOSTS = isWin ? 'C:/Windows/System32/drivers/etc/hosts' : '/etc/hosts'
+const EOL = isWin ? '\r\n' : '\n'
+const music = `${EOL}127.0.0.1	music.163.com${EOL}127.0.0.1	interface.music.163.com`
+
+async function removeHosts(splits) {
+  const filter = splits.filter(line => !line.includes('music.163.com'))
+  const content = filter.join(EOL)
+  await writeFile(HOSTS, content)
+}
+
+void (async function run() {
+  try {
+    const hosts = await readFile(HOSTS, 'utf8')
+    const splits = hosts.split(/\r\n|\r|\n/)
+    const isSet = splits.some(line => line.includes('music.163.com'))
+
+    if (!open || isSet) {
+      await removeHosts(splits)
+    }
+
+    if (open) {
+      const {address: ip} = await lookup('music.163.com') 
+      await appendFile(HOSTS, music)
+
+      exec(`node ${__dirname}/node_modules/@nondanee/unblockneteasemusic/app.js -p 80 -f ${ip}`)
+        .stdout.on('data', function (data) {
+          process.stdout.write(data)
+        })
+
+      process.on('SIGINT', async () => {
+        await removeHosts(splits)
+        process.exit()
+      })
+    }
+  } catch(err) {
+    console.log(err)
+  }
+})()
