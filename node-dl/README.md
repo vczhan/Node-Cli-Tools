@@ -1,29 +1,17 @@
-先拿到页面的资源
-```
-copy(performance.getEntriesByType('resource').map(x => x.name))
-```
+### 下载图片，JS，CSS等静态资源
 
-基本使用
-```
-node-dl -l newfile.txt -s https://abc.com -e foo/bar
-```
+#### 使用:
 
+##### 根据本地文件的资源地址列表下载
 ```
-# 根据文件列表下载
 node-dl -l newfile.txt
 ```
+可选参数：
+- -s: `-s https://abc.com`，只下载这个网站的资源
+- -e: `-e foo/bar`，忽略`foo/bar`目录，如https://abc.com/foo/bar/baz/a.jpg 下载到 baz/a.jpg
 
+
+##### 下载单个资源
 ```
-# 下载单个文件
 node-dl https://abc.com/foo/bar/1.jpg
-```
-
-```
-# 过滤掉非这个网址的资源
--s https://abc.com
-```
-
-```
-# 忽略目录，如https://abc.com/foo/bar/baz/a.jpg 下载到 baz/a.jpg
--e foo/bar
 ```
