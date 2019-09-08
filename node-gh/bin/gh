@@ -1,0 +1,122 @@
+#!/usr/bin/env node
+
+const fs = require('fs')
+const path = require('path')
+const { promisify } = require('util')
+const request = require('request')
+
+function matchUrl(url) {
+  return (
+    url &&
+    url.match(
+      /github\.com\/(?<user>[^/]+)\/(?<repo>[^/]+)(\/(?<type>(tree|blob)+)\/(?<branch>[^/]+)(\/(?<pathname>.+))?)?/
+    )
+  )
+}
+
+function getSourceList({ user, repo, branch }, callback) {
+  const options = {
+    url: `https://api.github.com/repos/${user}/${repo}/git/trees/${branch}?recursive=1`,
+    headers: {
+      'User-Agent': 'request'
+    }
+  }
+
+  return promisify(request)(options)
+}
+
+function downFile(
+  { user, repo, branch, basePath, fsPath },
+  singleFile = false
+) {
+  const fullPath = `https://github.com/${user}/${repo}/raw/${branch}/${fsPath}`
+
+  return new Promise(resolve => {
+    request({
+      url: fullPath
+    })
+      .on('error', err => {
+        console.log('✘ ' + fsPath)
+        resolve()
+      })
+      .on('response', function(res) {
+        if (res.statusCode !== 200) {
+          return this.emit('error')
+        }
+
+        let filePath = path.basename(fsPath)
+        let dirname = path.dirname(fsPath)
+
+        if (singleFile) {
+          res.pipe(fs.createWriteStream(filePath))
+        } else {
+          if (basePath === '/') {
+            dirname = path.join(repo, dirname)
+          } else {
+            dirname = dirname.substring(basePath.lastIndexOf('/') + 1)
+          }
+
+          if (!fs.existsSync(dirname)) {
+            fs.mkdirSync(dirname, { recursive: true })
+          }
+
+          filePath = path.join(dirname, filePath)
+          res.pipe(fs.createWriteStream(filePath))
+        }
+        console.log('✔ ' + filePath)
+        resolve()
+      })
+  })
+}
+
+async function main(url) {
+  try {
+    const matches = matchUrl(url)
+
+    if (!matches) {
+      console.error('Url Error')
+      return
+    }
+
+    const {
+      groups: { user, repo, type, branch = 'master', pathname }
+    } = matches
+
+    const singleFile = type === 'blob'
+
+    // 如果是单文件，直接下载
+    if (singleFile) {
+      const fsPath = pathname
+      downFile({ user, repo, branch, fsPath }, true)
+      return
+    }
+
+    const res = await getSourceList({ user, repo, type, branch })
+    const tree = JSON.parse(res.body).tree
+
+    let files = tree.filter(x => x.type === 'blob').map(x => x.path)
+    let basePath = '/'
+
+    if (pathname) {
+      files = files.filter(x => x.startsWith(pathname))
+      basePath = pathname //.replace(/\/[^/]+$/, '')
+    }
+
+    await Promise.all(
+      files.map(fsPath =>
+        downFile({ user, repo, branch, basePath, fsPath }, false)
+      )
+    )
+    console.log('Game Over!')
+  } catch (err) {
+    console.log(err.message)
+  }
+}
+
+// test
+// const url = 'https://github.com/vczhan/vscode-snapshot'
+// const url = 'https://github.com/vczhan/vscode-snapshot/tree/master/resources'
+// const url = 'https://github.com/vczhan/vscode-snapshot/blob/master/resources/dark/remove.svg'
+
+const url = process.argv[2]
+main(url)

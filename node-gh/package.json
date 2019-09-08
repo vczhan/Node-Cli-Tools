@@ -1,0 +1,11 @@
+{
+  "name": "node-gh",
+  "version": "1.0.0",
+  "description": "Download a single folder or directory from a GitHub repo",
+  "bin": {
+    "node-gh": "./bin/gh"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

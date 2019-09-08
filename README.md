@@ -45,3 +45,9 @@ node-pd https://xxx.com
 ```
 ubn
 ```
+
+### node-gh
+下载github单个文件或指定目录文件
+```
+node-gh https://github.com/username/repo
+```
