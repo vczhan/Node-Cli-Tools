@@ -1,0 +1,233 @@
+#!/usr/bin/env node
+const fs = require('fs')
+const path = require('path')
+const http = require('http')
+const exec = require('child_process').exec
+const WebSocket = require('ws')
+const qrcode = require('qrcode-terminal')
+
+const DIRECTORY_TEMPLATE = fs.readFileSync(path.join(__dirname, '../public/dirctory.html'), 'utf8')
+const INJECTED_CODE = fs.readFileSync(path.join(__dirname, '../public/injected.html'), 'utf8')
+
+const host = '0.0.0.0'
+const port = 3000
+const root = process.cwd()
+const isWin = process.platform === 'win32'
+
+const mime = {
+  html: 'text/html',
+  htm: 'text/html',
+  xml: 'text/xml',
+  css: 'text/css',
+  js: 'application/javascript',
+  json: 'application/json',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+  ico: 'image/x-icon',
+  svg: 'image/svg+xml',
+  mp3: 'audio/mpeg',
+  wav: 'audio/x-wav',
+  mp4: 'video/mp4',
+  woff: 'application/x-font-woff'
+}
+
+const argv = process.argv.slice(2)
+const opts = {
+  qrcode: false,
+  path: ''
+}
+
+argv.forEach(arg => {
+  // 二维码
+  if (arg === '-q') {
+    opts.qrcode = true
+  }
+  else if (argv !== '-q') {
+    opts.path = path.join('/', arg)
+  }
+})
+
+// 获取ip
+function getDevIp() {
+  const networkInterfaces = require('os').networkInterfaces()
+  const matches = []
+
+  Object.keys(networkInterfaces).forEach(item => {
+    networkInterfaces[item].forEach(address => {
+      // if (address.internal === false && address.family === 'IPv4') {
+      if (address.address.startsWith('192.168')) {
+        matches.push(address.address)
+      }
+    })
+  })
+
+  return matches && matches[0]
+}
+
+// 生成qrcpde 192.168.xx.xx:xxxx
+function qrcodeOutput(external) {
+  qrcode.generate(external, {small: true})
+  console.log('---------------------------------------')
+  console.log('[\x1B[32m%s\x1B[0m] Watching files...', 'sync')
+}
+
+function logUrls(local, external) {
+  console.log('[\x1B[32m%s\x1B[0m] Access URLs:', 'sync')
+  console.log('---------------------------------------')
+  console.log('    Local: \x1B[31m%s\x1B[0m', local)
+  console.log(' External: \x1B[36m%s\x1B[0m', external)
+  console.log('---------------------------------------')
+}
+
+// 用chrome的无痕模式打开
+function open(local, external) {
+  logUrls(local, external)
+
+  if (isWin) {
+    exec(`start chrome --incognito ${local}`)
+  } else {
+    exec(`open -na "Google Chrome" --args --incognito ${local}`)
+  }
+}
+
+
+// 获取目录下的文件
+function getFilesInfo(dirPath) {
+  const localPath = path.join(root, dirPath)
+  const files = fs.readdirSync(localPath)
+
+  const filesInfo = files.map(file => {
+    const fullPath = path.join(localPath, file)
+    const fsPath = path.posix.join(dirPath, file)
+    const stats = fs.statSync(fullPath)
+    if (stats.isFile()) {
+      const extname = path.extname(file)
+      return {
+        type: 'file',
+        ext: extname,
+        name: file,
+        path: fsPath
+      }
+    }
+    else if (stats.isDirectory()) {
+      return {
+        type: 'dir',
+        name: file,
+        path: fsPath
+      }
+    }
+  })
+
+  // 按先文件夹再文件排序
+  const order = ['dir', 'file']
+  return filesInfo.sort((m, n) => order.indexOf(m.type) - order.indexOf(n.type))
+}
+
+// 生成html
+function createFilesTree(filesInfo) {
+  const items = filesInfo
+    .map(({type, ext, name, path}) => (
+      `<li path="${path}" title="${name}" class="${type}${ext ? ' ext': ''}"><a href="${path}">${name}</a></li>`
+    ))
+
+  return `<ul class="dir-box">${items.join('')}</ul>`
+}
+
+function app(req, res) {
+  const pathname = decodeURIComponent(req.url.substring(1))
+  const localPath = path.join(root, pathname)
+
+  console.log(localPath)
+  // 不存在
+  if (!fs.existsSync(localPath)) {
+    res.end('404')
+    return
+  }
+
+  const stats = fs.statSync(localPath)
+
+  // 文件
+  if (stats.isFile()) {
+    console.log(localPath)
+    fs.readFile(localPath, (err, data) => {
+      if (err) return
+
+      const extname = path.extname(pathname).substring(1)
+      const resContentType = mime[extname] || 'text/plain'
+
+      res.writeHead(200, {'Content-Type': resContentType, 'Accept-Ranges': 'bytes'})
+      if (extname === 'html') {
+        const content = data.toString().replace('</body>', INJECTED_CODE + '</body>')
+        res.end(content)
+      } else {
+        res.write(data)
+        res.end()
+      }
+    })
+  }
+  // 文件夹
+  else if (stats.isDirectory()) {
+    const dirPaths = ['/']
+    pathname.split('/').reduce((m, n) => {
+      const dirPath = [m, n].join('/')
+      dirPaths.push(dirPath)
+      return dirPath
+    })
+
+    const content = dirPaths
+      .map(getFilesInfo)
+      .map(createFilesTree)
+      .join('')
+
+    const dirInfo = {
+      content,
+      title: pathname
+    }
+
+    res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'})
+    res.write(DIRECTORY_TEMPLATE.replace(/{{(\w+)}}/g, (m, n) => dirInfo[n]))
+    res.end()
+  }
+}
+
+// fs.watch change事件会触发两次
+function wch(fn) {
+  let allow = true
+  return (...args) => {
+    if (allow) {
+      fn(...args)
+      allow = false
+    }
+    setTimeout(() => { allow = true }, 50)
+  }
+}
+
+// 监听目录下文件变更
+fs.watch(root, {recursive: true}, wch((eventType, filename) => {
+  const ext = path.extname(filename)
+  wss.clients.forEach(client => {
+    if (ext === '.css') {
+      client.send('refreshcss')
+      console.log('[\x1B[32m%s\x1B[0m] style file change: \x1B[35m%s\x1B[0m', 'sync', filename)
+    } else {
+      client.send('reload')
+      console.log('[\x1B[32m%s\x1B[0m] Reloading Browsers...', 'sync')
+    }
+  })
+}))
+
+
+const server = http.createServer(app)
+const wss = new WebSocket.Server({ server })
+server.listen(port, host)
+
+const local = `http://127.0.0.1:${port}${opts.path}`
+const external = `http://${getDevIp()}:${port}${opts.path}`
+
+open(local, external)
+if (opts.qrcode) {
+  qrcodeOutput(external)
+}
