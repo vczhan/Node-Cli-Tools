@@ -51,3 +51,9 @@ ubn
 ```
 node-gh https://github.com/username/repo
 ```
+
+### 本地服务
+参考`live-server`和`BrowserSync`，新增二维码供手机扫描
+```
+sync path/to -q
+```
