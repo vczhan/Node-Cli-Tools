@@ -27,7 +27,7 @@ function downFile(url, exclude = '') {
     })
     .on('error', () => {
       failedFiles.push(url)
-      console.log('✘ ' + url )
+      console.log('\x1B[31m%s\x1B[0m', '✘ ' + url )
       resolve()
     })
     .on('response', function (res) {
@@ -40,7 +40,7 @@ function downFile(url, exclude = '') {
       }
 
       res.pipe(fs.createWriteStream(fsPath))
-      console.log('✔ ' + url)
+      console.log('\x1B[32m%s\x1B[0m', '✔ ' + url)
       resolve()
     })
   })

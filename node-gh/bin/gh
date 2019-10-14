@@ -36,7 +36,7 @@ function downFile(
       url: fullPath
     })
       .on('error', err => {
-        console.log('✘ ' + fsPath)
+        console.log('\x1B[31m%s\x1B[0m', '✘ ' + fsPath)
         resolve()
       })
       .on('response', function(res) {
@@ -63,7 +63,7 @@ function downFile(
           filePath = path.join(dirname, filePath)
           res.pipe(fs.createWriteStream(filePath))
         }
-        console.log('✔ ' + filePath)
+        console.log('\x1B[32m%s\x1B[0m', '✔ ' + filePath)
         resolve()
       })
   })
@@ -107,7 +107,7 @@ async function main(url) {
         downFile({ user, repo, branch, basePath, fsPath }, false)
       )
     )
-    console.log('Game Over!')
+    console.log('\x1B[36m%s\x1B[0m', 'Game Over!')
   } catch (err) {
     console.log(err.message)
   }
