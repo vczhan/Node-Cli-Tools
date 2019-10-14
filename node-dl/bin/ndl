@@ -22,6 +22,11 @@ const argv = require('yargs')
     default: '',
     describe: '排除的路径'
   })
+  .option('f', {
+    boolean: false,
+    alias: 'file',
+    describe: '保存文件名不包括路径'
+  })
   .option('s', {
     boolean: false,
     alias: 'source',
@@ -37,6 +42,7 @@ const argv = require('yargs')
 const {
   local,
   exclude,
+  file,
   source,
   _: [url]
 } = argv
@@ -45,8 +51,18 @@ const failedFiles = []
 function downFile(url) {
   const regex = new RegExp(`^\/?${exclude}?\/?`)
   const { pathname } = new URL(url)
-  const fsPath = pathname.replace(regex, '')
-  const dirname = path.dirname(fsPath)
+
+  let fsPath = pathname.replace(regex, '')
+  let dirname = path.dirname(fsPath)
+
+  if (file) {
+    dirname = './'
+    if (typeof file === 'boolean') {
+      fsPath = path.basename(fsPath) 
+    } else {
+      fsPath = file + path.extname(fsPath)
+    }
+  }
 
   return new Promise(resolve => {
     request({
