@@ -52,17 +52,18 @@ function downFile(url) {
   const regex = new RegExp(`^\/?${exclude}?\/?`)
   const { pathname } = new URL(url)
 
-  let fsPath = pathname.replace(regex, '')
-  let dirname = path.dirname(fsPath)
-
+  let fsPath = ''
   if (file) {
-    dirname = './'
     if (typeof file === 'boolean') {
-      fsPath = path.basename(fsPath) 
+      fsPath = path.basename(pathname) 
     } else {
-      fsPath = file + path.extname(fsPath)
+      fsPath = file + path.extname(pathname)
     }
+  } else {
+    fsPath = pathname.replace(regex, '')
   }
+
+  let dirname = path.dirname(fsPath)
 
   return new Promise(resolve => {
     request({
