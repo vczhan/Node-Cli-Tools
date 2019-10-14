@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-const fs = require('fs')
-const path = require('path')
 const http = require('http')
+const net = require('net')
+const path = require('path')
+const fs = require('fs')
 const exec = require('child_process').exec
 const WebSocket = require('ws')
 const qrcode = require('qrcode-terminal')
@@ -21,17 +22,14 @@ const root = process.cwd()
 const isWin = process.platform === 'win32'
 
 const mime = {
-  html: 'text/html',
-  htm: 'text/html',
-  xml: 'text/xml',
-  css: 'text/css',
-  js: 'application/javascript',
-  json: 'application/json',
+  html: 'text/html; charset=utf-8',
+  css: 'text/css; charset=utf-8',
+  js: 'application/javascript; charset=utf-8',
+  json: 'application/json; charset=utf-8',
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
   gif: 'image/gif',
-  bmp: 'image/bmp',
   ico: 'image/x-icon',
   svg: 'image/svg+xml',
   mp3: 'audio/mpeg',
@@ -147,7 +145,8 @@ function app(req, res) {
 
   // 不存在
   if (!fs.existsSync(localPath)) {
-    res.end('404')
+    res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' })
+    res.end(`${pathname} 不存在，前往<a href="/">目录</a>`)
     return
   }
 
@@ -159,7 +158,7 @@ function app(req, res) {
       if (err) return
 
       const extname = path.extname(pathname).substring(1)
-      const resContentType = mime[extname] || 'text/plain'
+      const resContentType = mime[extname] || 'text/plain; charset=utf-8'
 
       res.writeHead(200, {
         'Content-Type': resContentType,
@@ -180,10 +179,11 @@ function app(req, res) {
   else if (stats.isDirectory()) {
     const dirPaths = ['/']
     pathname.split('/').reduce((m, n) => {
+      if (n === '') return
       const dirPath = [m, n].join('/')
       dirPaths.push(dirPath)
       return dirPath
-    })
+    }, '')
 
     const content = dirPaths
       .map(getFilesInfo)
@@ -202,7 +202,7 @@ function app(req, res) {
 }
 
 // fs.watch change事件会触发两次
-function wch(fn) {
+function patch(fn) {
   let allow = true
   return (...args) => {
     if (allow) {
@@ -219,7 +219,7 @@ function wch(fn) {
 fs.watch(
   root,
   { recursive: true },
-  wch((eventType, filename) => {
+  patch((eventType, filename) => {
     const ext = path.extname(filename)
     wss.clients.forEach(client => {
       if (ext === '.css') {
@@ -237,14 +237,35 @@ fs.watch(
   })
 )
 
-const server = http.createServer(app)
-const wss = new WebSocket.Server({ server })
-server.listen(port, host)
-
-const local = `http://127.0.0.1:${port}${opts.path}`
-const external = `http://${getDevIp()}:${port}${opts.path}`
-
-open(local, external)
-if (opts.qrcode) {
-  qrcodeOutput(external)
+function start(port) {
+  return new Promise(resolve => {
+    // 找出可用port
+    ;(function findPort(port) {
+      const server = new net.Server()
+        .on('error', err => {
+          if (err.code === 'EADDRINUSE') {
+            findPort(port + 1)
+          }
+        })
+        .listen(port, host, () => {
+          server.close()
+          resolve(port)
+        })
+    })(port)
+  })
 }
+
+let wss
+start(port).then(port => {
+  const server = http.createServer(app)
+  wss = new WebSocket.Server({ server })
+  server.listen(port, host)
+
+  const local = `http://127.0.0.1:${port}${opts.path}`
+  const external = `http://${getDevIp()}:${port}${opts.path}`
+
+  open(local, external)
+  if (opts.qrcode) {
+    qrcodeOutput(external)
+  }
+})
