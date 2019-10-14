@@ -6,8 +6,14 @@ const exec = require('child_process').exec
 const WebSocket = require('ws')
 const qrcode = require('qrcode-terminal')
 
-const DIRECTORY_TEMPLATE = fs.readFileSync(path.join(__dirname, '../public/dirctory.html'), 'utf8')
-const INJECTED_CODE = fs.readFileSync(path.join(__dirname, '../public/injected.html'), 'utf8')
+const DIRECTORY_TEMPLATE = fs.readFileSync(
+  path.join(__dirname, '../public/dirctory.html'),
+  'utf8'
+)
+const INJECTED_CODE = fs.readFileSync(
+  path.join(__dirname, '../public/injected.html'),
+  'utf8'
+)
 
 const host = '0.0.0.0'
 const port = 3000
@@ -44,8 +50,7 @@ argv.forEach(arg => {
   // 二维码
   if (arg === '-q') {
     opts.qrcode = true
-  }
-  else if (argv !== '-q') {
+  } else if (argv !== '-q') {
     opts.path = path.join('/', arg)
   }
 })
@@ -69,7 +74,7 @@ function getDevIp() {
 
 // 生成qrcpde 192.168.xx.xx:xxxx
 function qrcodeOutput(external) {
-  qrcode.generate(external, {small: true})
+  qrcode.generate(external, { small: true })
   console.log('---------------------------------------')
   console.log('[\x1B[32m%s\x1B[0m] Watching files...', 'sync')
 }
@@ -93,7 +98,6 @@ function open(local, external) {
   }
 }
 
-
 // 获取目录下的文件
 function getFilesInfo(dirPath) {
   const localPath = path.join(root, dirPath)
@@ -111,8 +115,7 @@ function getFilesInfo(dirPath) {
         name: file,
         path: fsPath
       }
-    }
-    else if (stats.isDirectory()) {
+    } else if (stats.isDirectory()) {
       return {
         type: 'dir',
         name: file,
@@ -128,10 +131,12 @@ function getFilesInfo(dirPath) {
 
 // 生成html
 function createFilesTree(filesInfo) {
-  const items = filesInfo
-    .map(({type, ext, name, path}) => (
-      `<li path="${path}" title="${name}" class="${type}${ext ? ' ext': ''}"><a href="${path}">${name}</a></li>`
-    ))
+  const items = filesInfo.map(
+    ({ type, ext, name, path }) =>
+      `<li path="${path}" title="${name}" class="${type}${
+        ext ? ' ext' : ''
+      }"><a href="${path}">${name}</a></li>`
+  )
 
   return `<ul class="dir-box">${items.join('')}</ul>`
 }
@@ -140,7 +145,6 @@ function app(req, res) {
   const pathname = decodeURIComponent(req.url.substring(1))
   const localPath = path.join(root, pathname)
 
-  console.log(localPath)
   // 不存在
   if (!fs.existsSync(localPath)) {
     res.end('404')
@@ -151,16 +155,20 @@ function app(req, res) {
 
   // 文件
   if (stats.isFile()) {
-    console.log(localPath)
     fs.readFile(localPath, (err, data) => {
       if (err) return
 
       const extname = path.extname(pathname).substring(1)
       const resContentType = mime[extname] || 'text/plain'
 
-      res.writeHead(200, {'Content-Type': resContentType, 'Accept-Ranges': 'bytes'})
+      res.writeHead(200, {
+        'Content-Type': resContentType,
+        'Accept-Ranges': 'bytes'
+      })
       if (extname === 'html') {
-        const content = data.toString().replace('</body>', INJECTED_CODE + '</body>')
+        const content = data
+          .toString()
+          .replace('</body>', INJECTED_CODE + '</body>')
         res.end(content)
       } else {
         res.write(data)
@@ -187,7 +195,7 @@ function app(req, res) {
       title: pathname
     }
 
-    res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'})
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
     res.write(DIRECTORY_TEMPLATE.replace(/{{(\w+)}}/g, (m, n) => dirInfo[n]))
     res.end()
   }
@@ -201,24 +209,33 @@ function wch(fn) {
       fn(...args)
       allow = false
     }
-    setTimeout(() => { allow = true }, 50)
+    setTimeout(() => {
+      allow = true
+    }, 50)
   }
 }
 
 // 监听目录下文件变更
-fs.watch(root, {recursive: true}, wch((eventType, filename) => {
-  const ext = path.extname(filename)
-  wss.clients.forEach(client => {
-    if (ext === '.css') {
-      client.send('refreshcss')
-      console.log('[\x1B[32m%s\x1B[0m] style file change: \x1B[35m%s\x1B[0m', 'sync', filename)
-    } else {
-      client.send('reload')
-      console.log('[\x1B[32m%s\x1B[0m] Reloading Browsers...', 'sync')
-    }
+fs.watch(
+  root,
+  { recursive: true },
+  wch((eventType, filename) => {
+    const ext = path.extname(filename)
+    wss.clients.forEach(client => {
+      if (ext === '.css') {
+        client.send('refreshcss')
+        console.log(
+          '[\x1B[32m%s\x1B[0m] style file change: \x1B[35m%s\x1B[0m',
+          'sync',
+          filename
+        )
+      } else {
+        client.send('reload')
+        console.log('[\x1B[32m%s\x1B[0m] Reloading Browsers...', 'sync')
+      }
+    })
   })
-}))
-
+)
 
 const server = http.createServer(app)
 const wss = new WebSocket.Server({ server })
