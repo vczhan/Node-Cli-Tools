@@ -49,7 +49,7 @@ argv.forEach(arg => {
   if (arg === '-q') {
     opts.qrcode = true
   } else if (argv !== '-q') {
-    opts.path = path.join('/', arg)
+    opts.path = path.posix.join('/', arg)
   }
 })
 
