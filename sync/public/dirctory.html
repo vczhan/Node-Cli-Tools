@@ -27,7 +27,7 @@ body {
   height: 100vh;
 }
 .dir-box {
-  width: 200px;
+  width: 220px;
   margin: 0;
   padding: 0;
   border-right: 1px solid #F0F5F9;
@@ -35,16 +35,20 @@ body {
   overflow: auto;
 }
 .dir-box a {
-  display: block;
+  display: flex;
   color: #222;
   line-height: 24px;
   cursor: default;
-  user-select: none;
+  text-decoration: none;
+}
+.dir-box span {
+  flex: 1;
+  user-select: none;  
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
-  text-decoration: none;
 }
+
 .dir-box>li:nth-child(2n)>a {
   background: #f9fcfe;
 }
@@ -60,7 +64,7 @@ body {
 }
 .dir-box>li>a::before {
   content: "";
-  float: left;
+  display: block;
   width: 28px;
   height: 24px;
   background-repeat: no-repeat;
@@ -72,7 +76,7 @@ body {
 }
 .dir-box>li.dir>a::after {
   content: "";
-  float: right;
+  display: block;
   color: #7f7f7f;
   width: 20px;
   height: 24px;

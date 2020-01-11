@@ -2,7 +2,7 @@
 
 const fs = require('fs')
 const dns = require('dns')
-const exec = require('child_process').exec;
+const exec = require('child_process').exec
 const { promisify } = require('util')
 const lookup = promisify(dns.lookup)
 const readFile = promisify(fs.readFile)
@@ -44,6 +44,10 @@ void (async function run() {
       process.on('SIGINT', async () => {
         await removeHosts(splits)
         process.exit()
+      })
+      
+      process.on('SIGHUP', () => {
+        removeHosts(splits)
       })
     }
   } catch(err) {

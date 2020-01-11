@@ -3,6 +3,7 @@ const http = require('http')
 const net = require('net')
 const path = require('path')
 const fs = require('fs')
+const url = require('url')
 const exec = require('child_process').exec
 const WebSocket = require('ws')
 const qrcode = require('qrcode-terminal')
@@ -133,14 +134,14 @@ function createFilesTree(filesInfo) {
     ({ type, ext, name, path }) =>
       `<li path="${path}" title="${name}" class="${type}${
         ext ? ' ext' : ''
-      }"><a href="${path}">${name}</a></li>`
+      }"><a href="${path}"><span>${name}</span></a></li>`
   )
 
   return `<ul class="dir-box">${items.join('')}</ul>`
 }
 
 function app(req, res) {
-  const pathname = decodeURIComponent(req.url.substring(1))
+  const pathname = decodeURIComponent(url.parse(req.url).pathname)
   const localPath = path.join(root, pathname)
 
   // 不存在

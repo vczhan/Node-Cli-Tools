@@ -2,7 +2,7 @@
 # yarn lockfile v1
 
 
-"@nondanee/unblockneteasemusic@^0.18.1":
-  version "0.18.1"
-  resolved "https://registry.npm.taobao.org/@nondanee/unblockneteasemusic/download/@nondanee/unblockneteasemusic-0.18.1.tgz#7bc36a56cccf63bf296c26becb8e42a479c4dad8"
-  integrity sha1-e8NqVszPY78pbCa+y45CpHnE2tg=
+"@nondanee/unblockneteasemusic@^0.22.3":
+  version "0.22.3"
+  resolved "https://registry.npm.taobao.org/@nondanee/unblockneteasemusic/download/@nondanee/unblockneteasemusic-0.22.3.tgz#6423cdc93bb18fb2d722fad9862d037b91f53f73"
+  integrity sha1-ZCPNyTuxj7LXIvrZhi0De5H1P3M=

@@ -10,6 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@nondanee/unblockneteasemusic": "^0.18.1"
+    "@nondanee/unblockneteasemusic": "^0.22.3"
   }
 }
